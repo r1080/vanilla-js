@@ -12,24 +12,27 @@ class Task {
 // UI Class: Handle UI Tasks
 class UI {
     static displayTasks() {
-        const tasks = Store.getTasks();
-        tasks.forEach((task) => UI.addTaskToList(task));
+        const request = async () => {
+            const response = await fetch('http://localhost:8442/tracker/tasks');
+            const json = await response.json();
+            const tasks = Store.getTasks(json);
+            tasks.forEach((task) => UI.addTaskToList(task));
+        }
+        request();
     }
 
     static addTaskToList(task) {
         const list = document.querySelector('#task-list');
-
         const row = document.createElement('tr');
-
         row.innerHTML = `
         <td>${task.taskName}</td>
         <td>${task.priority}</td>
+        <td>${task.completed}</td>
         <td>${task.targetDate}</td>
-        <td>${task.completionDate}</td>
-        <td>${task.isCompleted}</td>
-        <td><a href="#" class="btn btn-danger btn-sm delete">X</a></td>
+        <td><a href="#" class="btn btn-danger btn-sm delete">Delete</a>
+        <a href="#" class="btn btn-info btn-sm delete">Edit</a>
+        </td>
       `;
-
         list.appendChild(row);
     }
 
@@ -44,7 +47,7 @@ class UI {
         div.className = `alert alert-${className}`;
         div.appendChild(document.createTextNode(message));
         const container = document.querySelector('.container');
-        const form = document.querySelector('#book-form');
+        const form = document.querySelector('#task-form');
         container.insertBefore(div, form);
 
         // Vanish in 3 seconds
@@ -52,23 +55,20 @@ class UI {
     }
 
     static clearFields() {
-        document.querySelector('#title').value = '';
-        document.querySelector('#author').value = '';
-        document.querySelector('#isbn').value = '';
+        document.querySelector('#taskName').value = '';
+        document.querySelector('#priority').value = '';
+        document.querySelector('#targetDate').value = '';
     }
 }
 
 // Store Class: Handles Storage
 class Store {
-    static getTasks() {
+    static getTasks(json) {
         let tasks;
-        if (localStorage.getItem('tasks') === null) {
-            tasks = [];
-        } else {
-            tasks = JSON.parse(localStorage.getItem('tasks'));
-        }
-
-        return tasks;
+        console.log(json.data);
+        // tasks = JSON.parse(json.data);
+        // console.log(tasks);
+        return json.data;
     }
 
     static addTask(task) {
@@ -85,34 +85,37 @@ class Store {
                 books.splice(index, 1);
             }
         });
-
-        localStorage.setItem('books', JSON.stringify(books));
+        localStorage.setItem('tasks', JSON.stringify(books));
     }
 }
 
-// Event: Display Books
-document.addEventListener('DOMContentLoaded', UI.displayBooks);
+class Service {
+
+}
+
+// Event: Display Tasks
+document.addEventListener('DOMContentLoaded', UI.displayTasks);
 
 // Event: Add a Book
 document.querySelector('#task-form').addEventListener('submit', (e) => {
-    // Prevent actual submit
+    // Prevent actual submit form
     e.preventDefault();
 
     // Get form values
     const taskName = document.querySelector('#taskName').value;
+    const priority = document.querySelector('#priority').value;
     const targetDate = document.querySelector('#targetDate').value;
-    const completionDate = document.querySelector('#completionDate').value;
 
     // Validate
-    if (taskName === '' || targetDate === '' || completionDate === '') {
+    if (taskName === '' || priority === '' || targetDate === '') {
         UI.showAlert('Please fill in all fields', 'danger');
     } else {
-        // Instatiate book
-        const task = new Task(taskName, targetDate, completionDate);
-        // Add Book to UI
-        UI.addTaskToList(book);
-        // Add book to store
-        Store.addBook(book);
+        const task = new Task(taskName, priority, targetDate);
+        console.log(task);
+        // Add Task to UI
+        UI.addTaskToList(task);
+        // Add Task to store
+        Store.addTask(task);
         // Show success message
         UI.showAlert('Task Added', 'success');
         // Clear fields
@@ -128,4 +131,10 @@ document.querySelector('#task-list').addEventListener('click', (e) => {
     Store.removeBook(e.target.parentElement.previousElementSibling.textContent);
     // Show success message
     UI.showAlert('Task Removed', 'success');
+});
+
+document.getElementById('delete-all').addEventListener('click', () => {
+    console.log('removing tasks');
+    localStorage.removeItem('tasks');
+    document.location.reload();
 });
